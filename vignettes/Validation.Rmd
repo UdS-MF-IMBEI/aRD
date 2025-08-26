@@ -1,0 +1,51 @@
+---
+title: "Validation"
+author: "Thomas Wolf"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Validation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(testthat)
+library(aRD)
+
+# Generate example data
+df <- data.frame(y = rep(c(0, 1), each = 250),
+                 x = rep(c(0, 1, 0, 1), times = c(200, 50, 50, 200)))
+
+# Expected values
+RD  <- 200 / 250 - 50 / 250
+SE  <- sqrt((200 / 250) * (1 - 200 / 250) / 250 + (50 / 250) * (1 - 50 / 250) / 250)
+
+# Fit model
+fit <- aRD(y ~ x, df, verbose = TRUE)
+out <- summary(fit)
+test_that("Estimated risk difference is equal to 0.6", {
+  expect_equal(object = unname(coef(fit)[2]),
+               expected = RD,
+               tolerance = 1e-5)
+})
+test_that("Estimated standard error is correct", {
+  expect_equal(object = unname(out$std.err[2]),
+               expected = SE,
+               tolerance = 1e-5)
+})
+test_that("Estimated z-value is correct", {
+  expect_equal(object = unname(out$z.value[2]),
+               expected = RD / SE,
+               tolerance = 1e-5)
+})
+test_that("Estimated confidence interval is correct", {
+  expected_CI <- RD + SE * qnorm(c(0.025, 0.975))
+  expect_equal(object = unname(confint(fit)[2, ]),
+               expected = expected_CI,
+               tolerance = 1e-5)
+})
